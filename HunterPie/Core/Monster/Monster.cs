@@ -401,13 +401,25 @@ namespace HunterPie.Core {
                     if (status.Address == 0) {
                         continue;
                     }
-                    
-                    float maxBuildup = Math.Max(0, Scanner.READ_FLOAT(status.Address + 0x1C8));
-                    float currentBuildup = Math.Max(0, Scanner.READ_FLOAT(status.Address + 0x1B8));
-                    float maxDuration = Math.Max(0, Scanner.READ_FLOAT(status.Address + 0x19C));
-                    float currentDuration = Math.Max(0, Scanner.READ_FLOAT(status.Address + 0x1F8));
-                    byte counter = Scanner.READ_BYTE(status.Address + 0x200);
-                    status.SetAilmentInfo(status.ID, currentDuration, maxDuration, currentBuildup, maxBuildup, counter);
+
+                    // TODO: store (reference to) offsets to simplify this code?
+                    if (status.ID == 33) { // PLACEHOLDER
+                        float maxBuildup = Math.Max(0, Scanner.READ_FLOAT(status.Address + 0x24));
+                        float currentBuildup = Math.Max(0, Scanner.READ_FLOAT(status.Address + 0x0));
+                        float maxDuration = Math.Max(0, Scanner.READ_FLOAT(status.Address + 0x10));
+                        float currentDuration = Math.Max(0, Scanner.READ_FLOAT(status.Address + 0xC));
+                        byte counter = Scanner.READ_BYTE(status.Address + 0x1C);
+                        // Problem: enrage can occur before buildup is maxed due to claw attacks on the head, but buildup will continue while enrage is already underway
+                        // Solution: use maxBuildup instead of currentBuildup if currentDuration > 0 (could also be used for regular ailments)
+                        status.SetAilmentInfo(status.ID, currentDuration, maxDuration, currentDuration > 0 ? maxBuildup : currentBuildup, maxBuildup, counter);
+                    } else {
+                        float maxBuildup = Math.Max(0, Scanner.READ_FLOAT(status.Address + 0x1C8));
+                        float currentBuildup = Math.Max(0, Scanner.READ_FLOAT(status.Address + 0x1B8));
+                        float maxDuration = Math.Max(0, Scanner.READ_FLOAT(status.Address + 0x19C));
+                        float currentDuration = Math.Max(0, Scanner.READ_FLOAT(status.Address + 0x1F8));
+                        byte counter = Scanner.READ_BYTE(status.Address + 0x200);
+                        status.SetAilmentInfo(status.ID, currentDuration, maxDuration, currentBuildup, maxBuildup, counter);
+                    }
                 }
             } else {
                 Int64 StatusAddress = Scanner.READ_LONGLONG(MonsterAddress + 0x78);
@@ -444,6 +456,20 @@ namespace HunterPie.Core {
                         }
                     }
                     StatusPtr = Scanner.READ_LONGLONG(StatusPtr + 0x18);
+                }
+                StatusPtr = MonsterAddress + 0x1BDF0; // Enrage
+                if (StatusPtr != 0x0) {
+                    int ID = 33; // PLACEHOLDER
+                    float maxBuildup = Math.Max(0, Scanner.READ_FLOAT(StatusPtr + 0x24));
+                    float currentBuildup = Math.Max(0, Scanner.READ_FLOAT(StatusPtr + 0x0));
+                    float maxDuration = Math.Max(0, Scanner.READ_FLOAT(StatusPtr + 0x10));
+                    float currentDuration = Math.Max(0, Scanner.READ_FLOAT(StatusPtr + 0xC));
+                    byte counter = Scanner.READ_BYTE(StatusPtr + 0x1C);
+                    Ailment mAilment = new Ailment {
+                        Address = StatusPtr
+                    };
+                    mAilment.SetAilmentInfo(ID, currentDuration, maxDuration, currentDuration > 0 ? maxBuildup : currentBuildup, maxBuildup, counter);
+                    Ailments.Add(mAilment);
                 }
             }
         }
